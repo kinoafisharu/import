@@ -8,8 +8,10 @@ MAIN_URL = 'https://www.el-com.ru'
 GENERAL_URL = 'https://www.el-com.ru/catalog/{}/{}/'
 CATEGORY = '1_kabel_provod'
 SORTED = '?CATALOG_SORT_FIELD=NAME&CATALOG_SORT_ORDER_NEW=ASC&PAGEN_1=all'
-# QUERY_PARAMETER = {'CATALOG_SORT_FIELD'name}
+# QUERY_PARAMETER = {'CATALOG_SORT_FIELD', name}
 COOKIES = dict(cityCodeNew='cr')
+VARIABLE_SEARCH_CATEGORY = {'one': 'абел*','two': 'ровод*'}
+
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -20,20 +22,39 @@ def fetch_site():
     return raw_html
 
 
-def get_content_category(content_from_site):
+def get_content(content_from_site):
     soup_content = bs(content_from_site, 'html.parser')
-    soup_category = soup_content.find('div', {'class': 'h1'})
-    soup_sub_category = soup_content.find_all('div',
-                                               {'class': 'one-product'})
-    return soup_category, soup_sub_category
+    soup_tag = soup_content.find_all('div', class_='one-section')
+    soup_sub_tag = soup_content.find_all('div', {'class': 'one-product'})
+    return soup_tag, soup_sub_tag
 
 
-def get_info_product(content_category, content_sub_category):
+def get_info_tag(content_tag):
+    tag_list = []
+    tag_dict = {}
+    for tag in content_tag:
+        tag_sub_list = get_separate_tags(tag)
+        print(tag_sub_list)
+        tag_dict.update({'title': tag_sub_list})
+        tag_list.append(tag_dict)
+        print(tag_list)
+
+    return tag_list
+
+
+def get_separate_tags(tag):
+    tag_sub_list = []
+    title_tag = tag.a.span.string
+    if re.search(VARIABLE_SEARCH_CATEGORY['one'], title_tag):
+        tag_sub_list.append({'tag': title_tag})
+    elif re.search(VARIABLE_SEARCH_CATEGORY['two'], title_tag):
+        tag_sub_list.append({'tag': title_tag})
+    return tag_sub_list
+
+
+def get_info_product(content_sub_tag):
     products_info = []
-    tag = content_category.find('h1').get_text()
-    tag = re.findall('\D+', tag)
-    print(tag)
-    for product in content_sub_category:
+    for product in content_sub_tag:
         common_name = product.find('a', {'class': 'name'})
         name = common_name.get_text()
         name = ' '.join(re.findall('\w+', name))
@@ -49,7 +70,7 @@ def get_info_product(content_category, content_sub_category):
                         'offer_value': value_local,
                         'offer_price': price,
                         'dimension': dimension,
-                        'offer_tag': tag,
+                        'offer_tag': '',
                         'offer_sub_tag': sub_tag,
                         }
         products_info.append(product_dict)
@@ -58,12 +79,13 @@ def get_info_product(content_category, content_sub_category):
 
 def output_products():
     data = fetch_site()
-    data_category, data_sub_category = get_content_category(data)
-    products_info = get_info_product(data_category, data_sub_category)
+    data_category, data_sub_category = get_content(data)
+    products_info = get_info_product(data_category)
     return products_info
 
 
 if __name__ == '__main__':
     content = fetch_site()
-    content_category, content_sub_category = get_content_category(content)
-    get_info_product(content_category, content_sub_category)
+    content_tag, content_sub_tag = get_content(content)
+    get_info_tag(content_tag)
+    get_info_product(content_sub_tag)
