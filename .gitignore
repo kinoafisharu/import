@@ -209,5 +209,4 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
-Будет удалено .gitignore
-Будет удалено .idea/
+.idea/
