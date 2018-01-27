@@ -10,7 +10,7 @@ CATEGORY = '1_kabel_provod'
 SORTED = '?CATALOG_SORT_FIELD=NAME&CATALOG_SORT_ORDER_NEW=ASC&PAGEN_1=all'
 # QUERY_PARAMETER = {'CATALOG_SORT_FIELD', name}
 COOKIES = dict(cityCodeNew='cr')
-VARIABLE_SEARCH_CATEGORY = {'one': 'абел*','two': 'ровод*'}
+VARIABLE_SEARCH_CATEGORY = {'кабель': 'абел*', 'провод': 'ровод*'}
 
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -31,25 +31,22 @@ def get_content(content_from_site):
 
 def get_info_tag(content_tag):
     tag_list = []
-    tag_dict = {}
     for tag in content_tag:
-        tag_sub_list = get_separate_tags(tag)
-        print(tag_sub_list)
-        tag_dict.update({'title': tag_sub_list})
-        tag_list.append(tag_dict)
-        print(tag_list)
-
+        tag_sub = get_separate_tags(tag)
+        tag_list.append({'title': tag_sub})
+    print(tag_list)
     return tag_list
 
 
-def get_separate_tags(tag):
-    tag_sub_list = []
+def get_separate_tags(tag, conteniune=None):
+    tag_sub = ''
     title_tag = tag.a.span.string
-    if re.search(VARIABLE_SEARCH_CATEGORY['one'], title_tag):
-        tag_sub_list.append({'tag': title_tag})
-    elif re.search(VARIABLE_SEARCH_CATEGORY['two'], title_tag):
-        tag_sub_list.append({'tag': title_tag})
-    return tag_sub_list
+    if re.search(VARIABLE_SEARCH_CATEGORY['кабель'], title_tag):
+        tag_sub = {'кабель': title_tag}
+    elif re.search(VARIABLE_SEARCH_CATEGORY['провод'], title_tag):
+        tag_sub = {'провод': title_tag}
+
+    return tag_sub
 
 
 def get_info_product(content_sub_tag):
