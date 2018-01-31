@@ -24,38 +24,46 @@ def fetch_site():
 
 def get_content(content_from_site):
     soup_content = bs(content_from_site, 'html.parser')
-    soup_tag = soup_content.find_all('div', class_='one-section')
+    soup_tag = soup_content.find_all('div', class_='section')
     soup_sub_tag = soup_content.find_all('div', {'class': 'one-product'})
     return soup_tag, soup_sub_tag
 
 
 def get_info_tag(content_tag):
     tag_list = []
+    tag_dict = {}
+    sub_tag_list = []
     for tag in content_tag:
-        tag_sub = get_separate_tags(tag)
-        tag_list.append({'title': tag_sub})
+        sub_tag = get_separate_tags(tag)
+        sub_tag_list.append(sub_tag)
     print(tag_list)
     return tag_list
 
 
-def get_separate_tags(tag, conteniune=None):
-    tag_sub = ''
+def fetch_product_from_tag(link_tag):                                         # получает страницу с данным тегом
+    raw_html = requests.get(link_tag, cookies=COOKIES, verify=False).content
+    return raw_html
+
+
+def get_separate_tags(tag):                                             # ищет ключевые слова и разделяет по ним теги
+    print(tag)
     title_tag = tag.a.span.string
+    link_tag = tag.a.get('href')
     if re.search(VARIABLE_SEARCH_CATEGORY['кабель'], title_tag):
-        tag_sub = {'кабель': title_tag}
+        sub_tag = {'кабель': title_tag, 'link': (MAIN_URL+link_tag)}
     elif re.search(VARIABLE_SEARCH_CATEGORY['провод'], title_tag):
-        tag_sub = {'провод': title_tag}
+        sub_tag = {'провод': title_tag}
 
-    return tag_sub
+    return sub_tag
 
 
-def get_info_product(content_sub_tag):
+def get_info_product(content_sub_tag):                                  # получает необходиму информацию по продукту
     products_info = []
     for product in content_sub_tag:
         common_name = product.find('a', {'class': 'name'})
         name = common_name.get_text()
         name = ' '.join(re.findall('\w+', name))
-        link = common_name.get('href')
+        link_product = common_name.get('href')
         # central = product.find('span', {'class': 'central'})
         value_local = product.find('span', {'class': 'local'}).get_text()
         value_local = ''.join(re.findall('\w', value_local))
@@ -63,7 +71,7 @@ def get_info_product(content_sub_tag):
         dimension = product.find('span', {'class': 'measure'}).get_text()
         sub_tag = name
         product_dict = {'offer_title': name,
-                        'offer_url': (MAIN_URL + link),
+                        'offer_url': (MAIN_URL + link_product),
                         'offer_value': value_local,
                         'offer_price': price,
                         'dimension': dimension,
@@ -85,4 +93,8 @@ if __name__ == '__main__':
     content = fetch_site()
     content_tag, content_sub_tag = get_content(content)
     get_info_tag(content_tag)
-    get_info_product(content_sub_tag)
+    link_tag = ['link']
+    content_product = fetch_product_from_tag(link_tag)
+    content_section_tag, content_section_sub_tag =\
+        get_content(content_product)
+    get_info_product(content_section_sub_tag)
