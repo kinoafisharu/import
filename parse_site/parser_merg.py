@@ -3,6 +3,8 @@ import random
 import re
 import time
 from bs4 import BeautifulSoup as bs
+import json
+
 
 MAIN_URL = 'http://www.merg.ru'
 KABEL = '/catalog/kabel/'
@@ -46,7 +48,6 @@ def get_link_category(soup_with_link):
         link_category = soup_a[1].get('href')
         dict_link_category = {'link': link_category}
         list_link_categories.append(dict_link_category)
-        break
     return list_link_categories
 
 
@@ -57,13 +58,17 @@ def get_link_sub_category(list_link_categories):
         tail = link_category['link']
         content = fetch_url(tail)
         soup_links_sub_category = get_soup_links(content)
-        description = get_description(tail)
         for soup_tag in soup_links_sub_category:
             soup_a = soup_tag.find_all('a')
             link_sub_category = soup_a[1].get('href')
+            try:
+                description = soup_a[2].find('i').get_text()
+            except IndexError:
+                description = ''
             dict_link_sub_category = {'link_sub_category': link_sub_category,
                                       'description_sub_category': description}
             list_link_sub_categories.append(dict_link_sub_category)
+
     return list_link_sub_categories
 
 
@@ -76,10 +81,12 @@ def get_link_subject(list_link_sub_categories):
         soup_tag = soup_content.find_all('a', class_='goods_a_big')
         description_sub_category = tail['description_sub_category']
         list_link_subject = []
-        for tag in soup_tag:
+        for enum, tag in enumerate(soup_tag):
             link_subject = tag.get('href')
+            print(link_subject)
             list_link_subject.append({'link_subject': link_subject,
                                       'description_sub_category': description_sub_category})
+    print(str(enum))
     return list_link_subject
 
 
@@ -93,7 +100,7 @@ def get_full_info(list_link_subject):
         info_subject = get_info_subject(soup_subject)
         subtag_category = link_chain['category']
         split_subtag = info_subject['title_subject'].split(' ')
-        subtag_mark = split_subtag[1] + 'силовой'
+        subtag_mark = split_subtag[0] + ' силовой'
         subtag_prop = split_subtag[2]
         subtag_prop_2 = split_subtag[3]
         # try:
@@ -102,7 +109,6 @@ def get_full_info(list_link_subject):
         # #     continue
         subtag = ', '.join(split_subtag) + ', ' + subtag_category + ', ' + subtag_mark
         description = subject['description_sub_category']
-        print(description)
 
         list_full_info.append({
             'offer_tag': 'Кабельно-проводниковая продукция',
@@ -118,6 +124,7 @@ def get_full_info(list_link_subject):
             'image_link': info_subject['image_link'],
         }
         )
+        break
 
     return list_full_info
 
@@ -164,7 +171,6 @@ def get_description(tail):
     content = fetch_url(tail)
     soup = bs(content, 'html.parser')
     description = soup.find('i').get_text()
-    print(description)
     return description
 
 
@@ -179,6 +185,11 @@ def get_output_merg():
     return info_full_subject
 
 
+def get_output_file(temp_list):
+    with open("data.json", "w", encoding="utf-8") as file:
+        json.dump(temp_list, file)
+
+
 if __name__ == '__main__':
     tail = KABEL
     content = fetch_url(tail)
@@ -186,6 +197,7 @@ if __name__ == '__main__':
     list_link_category = get_link_category(soup_with_links)
     list_link_sub_categories = get_link_sub_category(list_link_category)
     list_subject = get_link_subject(list_link_sub_categories)
+    print(list_subject)
     # get_full_info(list_subject)
-    info_full_subject = get_full_info(list_subject)
-    print(info_full_subject)
+    # info_full_subject = get_full_info(list_subject)
+    # print(info_full_subject)
