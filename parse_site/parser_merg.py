@@ -94,7 +94,7 @@ def get_full_info(list_link_subject):
         #     subtag_prop_2 = split_subtag[3]
         # # except:
         # #     continue
-        subtag = ', '.join(split_subtag)
+        subtag = ', '.join(split_subtag) + ', ' + subtag_category
 
         list_full_info.append({
             'offer_tag': link_chain['group'],
