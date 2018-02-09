@@ -17,9 +17,10 @@ def fetch_url(tail):
         "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:5.0) Gecko/20110619 Firefox/5.0",
     ]
     user_agent = random.choice(agent_list)
-    header = {'User_agent': user_agent}
+    user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:45.0) Gecko/20100101 Firefox/45.0'
+    headers = {'User_agent': user_agent}
     print(url)
-    raw_html = requests.get(url).content
+    raw_html = requests.get(url, headers).content
     return raw_html
 
 
@@ -95,9 +96,11 @@ def get_full_info(list_link_subject):
         # # except:
         # #     continue
         subtag = ', '.join(split_subtag) + ', ' + subtag_category
+        image_link = MAIN_URL + info_subject['image_link']
+
 
         list_full_info.append({
-            'offer_tag': link_chain['group'],
+            'offer_tag': 'Кабельно-проводниковая продукция',
             'offer_subtag': subtag,
             'offer_valuta': 'руб.',
             'offer_title': info_subject['title_subject'],
@@ -107,7 +110,7 @@ def get_full_info(list_link_subject):
             "offer_minorder_value": 'м',
             "offer_pre_text": "Краткое описание",
             "offer_availability": info_subject['in_stock'],
-            'image_link': info_subject['image_link'],
+            'image_link': image_link,
         }
         )
 
