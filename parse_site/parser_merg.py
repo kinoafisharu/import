@@ -11,7 +11,7 @@ KABEL = '/catalog/kabel/'
 
 def fetch_url(tail):
     url = MAIN_URL + tail
-    timeout = (10, 0.01)
+    timeout = (2, 10)
     agent_list = [
         "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:2.2a1pre) Gecko/20110324 Firefox/4.2a1pre",
         "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:5.0) Gecko/20100101 Firefox/5.0",
@@ -57,10 +57,12 @@ def get_link_sub_category(list_link_categories):
         tail = link_category['link']
         content = fetch_url(tail)
         soup_links_sub_category = get_soup_links(content)
+        description = get_description(tail)
         for soup_tag in soup_links_sub_category:
             soup_a = soup_tag.find_all('a')
             link_sub_category = soup_a[1].get('href')
-            dict_link_sub_category = {'link_sub_category': link_sub_category}
+            dict_link_sub_category = {'link_sub_category': link_sub_category,
+                                      'description_sub_category': description}
             list_link_sub_categories.append(dict_link_sub_category)
     return list_link_sub_categories
 
@@ -72,10 +74,12 @@ def get_link_subject(list_link_sub_categories):
         content = fetch_url(subject_tail)
         soup_content = bs(content, 'html.parser')
         soup_tag = soup_content.find_all('a', class_='goods_a_big')
+        description_sub_category = tail['description_sub_category']
         list_link_subject = []
         for tag in soup_tag:
             link_subject = tag.get('href')
-            list_link_subject.append({'link_subject': link_subject})
+            list_link_subject.append({'link_subject': link_subject,
+                                      'description_sub_category': description_sub_category})
     return list_link_subject
 
 
@@ -97,8 +101,8 @@ def get_full_info(list_link_subject):
         # # except:
         # #     continue
         subtag = ', '.join(split_subtag) + ', ' + subtag_category + ', ' + subtag_mark
-        image_link = MAIN_URL + info_subject['image_link']
-
+        description = subject['description_sub_category']
+        print(description)
 
         list_full_info.append({
             'offer_tag': 'Кабельно-проводниковая продукция',
@@ -109,9 +113,9 @@ def get_full_info(list_link_subject):
             'offer_value': 'м',
             "offer_minorder": '1',
             "offer_minorder_value": 'м',
-            "offer_pre_text": "Краткое описание",
-            "offer_availability": info_subject['in_stock'],
-            'image_link': image_link,
+            "offer_pre_text": description,
+            "offer_availability": 'под заказ',
+            'image_link': info_subject['image_link'],
         }
         )
 
@@ -144,6 +148,7 @@ def get_info_subject(soup_subject):
     try:
         image_link = info_subject.find('div', id='g_big_photo')
         image_link = image_link.find('a').get('href')
+        image_link = MAIN_URL + image_link
     except AttributeError:
         image_link = 'No photo'
 
@@ -153,6 +158,14 @@ def get_info_subject(soup_subject):
         'in_stock': in_stock,
         'image_link': image_link,
         }
+
+
+def get_description(tail):
+    content = fetch_url(tail)
+    soup = bs(content, 'html.parser')
+    description = soup.find('i').get_text()
+    print(description)
+    return description
 
 
 def get_output_merg():
@@ -173,6 +186,6 @@ if __name__ == '__main__':
     list_link_category = get_link_category(soup_with_links)
     list_link_sub_categories = get_link_sub_category(list_link_category)
     list_subject = get_link_subject(list_link_sub_categories)
-    # print(list_subject)
+    # get_full_info(list_subject)
     info_full_subject = get_full_info(list_subject)
     print(info_full_subject)
