@@ -11,6 +11,7 @@ KABEL = '/catalog/kabel/'
 
 def fetch_url(tail):
     url = MAIN_URL + tail
+    timeout = (10, 0.01)
     agent_list = [
         "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:2.2a1pre) Gecko/20110324 Firefox/4.2a1pre",
         "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:5.0) Gecko/20100101 Firefox/5.0",
@@ -19,8 +20,8 @@ def fetch_url(tail):
     user_agent = random.choice(agent_list)
     user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:45.0) Gecko/20100101 Firefox/45.0'
     headers = {'User_agent': user_agent}
-    print(url)
-    raw_html = requests.get(url, headers).content
+
+    raw_html = requests.get(url, headers, timeout=timeout).content
     return raw_html
 
 
@@ -88,14 +89,14 @@ def get_full_info(list_link_subject):
         info_subject = get_info_subject(soup_subject)
         subtag_category = link_chain['category']
         split_subtag = info_subject['title_subject'].split(' ')
-        subtag_mark = split_subtag[1]
+        subtag_mark = split_subtag[1] + 'силовой'
         subtag_prop = split_subtag[2]
         subtag_prop_2 = split_subtag[3]
         # try:
         #     subtag_prop_2 = split_subtag[3]
         # # except:
         # #     continue
-        subtag = ', '.join(split_subtag) + ', ' + subtag_category
+        subtag = ', '.join(split_subtag) + ', ' + subtag_category + ', ' + subtag_mark
         image_link = MAIN_URL + info_subject['image_link']
 
 
