@@ -1,9 +1,9 @@
 import requests
 import random
-import re
-import time
+import pickle
 from bs4 import BeautifulSoup as bs
 import json
+
 
 
 MAIN_URL = 'http://www.merg.ru'
@@ -51,46 +51,42 @@ def get_link_category(soup_with_link):
     return list_link_categories
 
 
-def get_link_sub_category(list_link_categories):
+def get_link_sub_category(link_category):
     # получаем подгруппу (марка кабеля)
     list_link_sub_categories = []
-    for link_category in list_link_categories:
-        tail = link_category['link']
-        content = fetch_url(tail)
-        soup_links_sub_category = get_soup_links(content)
-        for soup_tag in soup_links_sub_category:
-            soup_a = soup_tag.find_all('a')
-            link_sub_category = soup_a[1].get('href')
-            try:
-                description = soup_a[2].find('i').get_text()
-            except IndexError:
-                description = ''
-            dict_link_sub_category = {'link_sub_category': link_sub_category,
-                                      'description_sub_category': description}
-            list_link_sub_categories.append(dict_link_sub_category)
+    tail = link_category['link']
+    content = fetch_url(tail)
+    soup_links_sub_category = get_soup_links(content)
+    for soup_tag in soup_links_sub_category:
+        soup_a = soup_tag.find_all('a')
+        link_sub_category = soup_a[1].get('href')
+        try:
+            description = soup_a[2].find('i').get_text()
+        except IndexError:
+            description = ''
+        dict_link_sub_category = {'link_sub_category': link_sub_category,
+                                  'description_sub_category': description}
+        list_link_sub_categories.append(dict_link_sub_category)
 
     return list_link_sub_categories
 
 
-def get_link_subject(list_link_sub_categories):
+def get_link_subject(link_sub_category):
     list_link_subject = []
-    for tail in list_link_sub_categories:
-        subject_tail = tail['link_sub_category']
-        content = fetch_url(subject_tail)
-        soup_content = bs(content, 'html.parser')
-        soup_tag = soup_content.find_all('a', class_='goods_a_big')
-        description_sub_category = tail['description_sub_category']
-        list_link_subject = []
-        for enum, tag in enumerate(soup_tag):
-            link_subject = tag.get('href')
-            print(link_subject)
-            list_link_subject.append({'link_subject': link_subject,
-                                      'description_sub_category': description_sub_category})
-    print(str(enum))
+    subject_tail = link_sub_category['link_sub_category']
+    content = fetch_url(subject_tail)
+    soup_content = bs(content, 'html.parser')
+    soup_tag = soup_content.find_all('a', class_='goods_a_big')
+    description_sub_category = link_sub_category['description_sub_category']
+    for tag in soup_tag:
+        link_subject = tag.get('href')
+        list_link_subject.append({'link_subject': link_subject,
+                                  'description_sub_category': description_sub_category})
+
     return list_link_subject
 
 
-def get_full_info(list_link_subject):
+def get_full_info(list_link_subject, link_subcategory):
     list_full_info = []
     for subject in list_link_subject:
         tail_subject = subject['link_subject']
@@ -100,13 +96,7 @@ def get_full_info(list_link_subject):
         info_subject = get_info_subject(soup_subject)
         subtag_category = link_chain['category']
         split_subtag = info_subject['title_subject'].split(' ')
-        subtag_mark = split_subtag[0] + ' силовой'
-        subtag_prop = split_subtag[2]
-        subtag_prop_2 = split_subtag[3]
-        # try:
-        #     subtag_prop_2 = split_subtag[3]
-        # # except:
-        # #     continue
+        subtag_mark = 'Кабель силовой'
         subtag = ', '.join(split_subtag) + ', ' + subtag_category + ', ' + subtag_mark
         description = subject['description_sub_category']
 
@@ -124,8 +114,13 @@ def get_full_info(list_link_subject):
             'image_link': info_subject['image_link'],
         }
         )
-        break
+    name_file = link_subcategory['link_sub_category'].split('/')
+    name_file = name_file[1:-1]
+    name_file = '_'.join(name_file)
 
+    pickle_file = '{}.pickle'.format(name_file)
+    with open(pickle_file, 'wb') as file:
+        pickle.dump(list_full_info, file, pickle.HIGHEST_PROTOCOL)
     return list_full_info
 
 
@@ -157,7 +152,7 @@ def get_info_subject(soup_subject):
         image_link = image_link.find('a').get('href')
         image_link = MAIN_URL + image_link
     except AttributeError:
-        image_link = 'No photo'
+        image_link = ''
 
     return {
         'title_subject': title_subject,
@@ -179,25 +174,22 @@ def get_output_merg():
     content = fetch_url(tail)
     soup_with_links = get_soup_links(content)
     list_link_category = get_link_category(soup_with_links)
-    list_link_sub_categories = get_link_sub_category(list_link_category)
-    list_subject = get_link_subject(list_link_sub_categories)
-    info_full_subject = get_full_info(list_subject)
-    return info_full_subject
+    for link_category in list_link_category:
+        list_link_sub_categories = get_link_sub_category(link_category)
+        for link_sub_category in list_link_sub_categories:
+            list_subject = get_link_subject(link_sub_category)
+            return get_full_info(list_subject, link_sub_category)
 
-
-def get_output_file(temp_list):
-    with open("data.json", "w", encoding="utf-8") as file:
-        json.dump(temp_list, file)
 
 
 if __name__ == '__main__':
+    main_list_links_sub_categories = []
     tail = KABEL
     content = fetch_url(tail)
     soup_with_links = get_soup_links(content)
     list_link_category = get_link_category(soup_with_links)
-    list_link_sub_categories = get_link_sub_category(list_link_category)
-    list_subject = get_link_subject(list_link_sub_categories)
-    print(list_subject)
-    # get_full_info(list_subject)
-    # info_full_subject = get_full_info(list_subject)
-    # print(info_full_subject)
+    for link_category in list_link_category:
+        list_link_sub_categories = get_link_sub_category(link_category)
+        for link_sub_category in list_link_sub_categories:
+            list_subject = get_link_subject(link_sub_category)
+            print(get_full_info(list_subject, link_sub_category))
