@@ -82,7 +82,7 @@ def get_info_product(content_sub_tag):                                  # пол
     return products_info
 
 
-def output_products():
+def get_output_elcom():
     data = fetch_site()
     data_category, data_sub_category = get_content(data)
     products_info = get_info_product(data_category)
