@@ -2,14 +2,13 @@ import requests
 import random
 import pickle
 from bs4 import BeautifulSoup as bs
-import json
-
 
 
 MAIN_URL = 'http://www.merg.ru'
 KABEL = '/catalog/kabel/'
 # DIR_INFO = {'catalog': CATALOG,
 #             'subject': SUBJECT,}
+
 
 def fetch_url(tail):
     url = MAIN_URL + tail
@@ -31,7 +30,6 @@ def get_soup_links(content_from_site):
     soup_content = bs(content_from_site, 'html.parser')
     soup_tag = soup_content.find('div', id='subparts')
     soup_tags = soup_tag.find_all('tr')
-    soup_links = soup_tag.find_all('a')
     return soup_tags
 
 
@@ -101,24 +99,28 @@ def get_full_info(list_link_subject, link_subcategory):
         description = subject['description_sub_category']
 
         list_full_info.append({
-            'offer_tag': 'Кабельно-проводниковая продукция',
-            'offer_subtag': subtag,
+            'offer_tag': 'КАБЕЛЬНО-ПРОВОДНИКОВАЯ ПРОДУКЦИЯ',
+            'offer_subtags': subtag,
             'offer_valuta': 'руб.',
             'offer_title': info_subject['title_subject'],
             'offer_price': info_subject['price'],
             'offer_value': 'м',
-            "offer_minorder": '1',
-            "offer_minorder_value": 'м',
-            "offer_pre_text": description,
-            "offer_availability": 'под заказ',
-            'image_link': info_subject['image_link'],
+            'offer_minorder': '1',
+            'offer_minorder_value': 'м',
+            'offer_pre_text': description,
+            'offer_availability': 'Под заказ',
+            'offer_image_url': info_subject['image_link'],
+            'offer_url': '',
+            'offer_text': '',
+            'offer_publish': '',
+
         }
         )
     name_file = link_subcategory['link_sub_category'].split('/')
     name_file = name_file[1:-1]
     name_file = '_'.join(name_file)
 
-    pickle_file = '{}.pickle'.format(name_file)
+    pickle_file = 'storage/{}.pickle'.format(name_file)
     with open(pickle_file, 'wb') as file:
         pickle.dump(list_full_info, file, pickle.HIGHEST_PROTOCOL)
     return list_full_info
@@ -145,7 +147,7 @@ def get_info_subject(soup_subject):
     try:
         price = price.find('b').get_text()
     except AttributeError:
-        price = 'Цена по запросу'
+        price = 0.00
     in_stock = info_subject.find('i').get_text()
     try:
         image_link = info_subject.find('div', id='g_big_photo')
@@ -181,7 +183,6 @@ def get_output_merg():
             return get_full_info(list_subject, link_sub_category)
 
 
-
 if __name__ == '__main__':
     main_list_links_sub_categories = []
     tail = KABEL
@@ -193,3 +194,5 @@ if __name__ == '__main__':
         for link_sub_category in list_link_sub_categories:
             list_subject = get_link_subject(link_sub_category)
             print(get_full_info(list_subject, link_sub_category))
+            break
+
