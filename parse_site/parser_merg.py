@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup as bs
 
 MAIN_URL = 'http://www.merg.ru'
 KABEL = '/catalog/kabel/'
+PROVOD = '/catalog/provodashnur/'
+SIP = '/catalog/provod-sip/'
 # DIR_INFO = {'catalog': CATALOG,
 #             'subject': SUBJECT,}
 
@@ -27,9 +29,14 @@ def fetch_url(tail):
 
 
 def get_soup_links(content_from_site):
-    soup_content = bs(content_from_site, 'html.parser')
-    soup_tag = soup_content.find('div', id='subparts')
+    soup_content = bs(content_from_site, 'lxml')
+    # soup_tag = soup_content.find('div', id='subparts')
+    soup_tag = soup_content.find('table').find_parent('div', id='subparts')
+    # print(soup_tag)
+    # print(type(soup_tag))
+    # soup_tag = soup_content.find('table').tr
     soup_tags = soup_tag.find_all('tr')
+    print(soup_tags)
     return soup_tags
 
 
@@ -84,7 +91,7 @@ def get_link_subject(link_sub_category):
     return list_link_subject
 
 
-def get_full_info(list_link_subject, link_subcategory):
+def get_full_info_kabel(list_link_subject, link_subcategory):
     list_full_info = []
     for subject in list_link_subject:
         tail_subject = subject['link_subject']
@@ -103,7 +110,8 @@ def get_full_info(list_link_subject, link_subcategory):
             'offer_subtags': subtag,
             'offer_valuta': 'руб.',
             'offer_title': info_subject['title_subject'],
-            'offer_price': info_subject['price'],
+            # 'offer_price': info_subject['price'],
+            'offer_price': '0.0',
             'offer_value': 'м',
             'offer_minorder': '1',
             'offer_minorder_value': 'м',
@@ -113,7 +121,48 @@ def get_full_info(list_link_subject, link_subcategory):
             'offer_url': '',
             'offer_text': '',
             'offer_publish': '',
+        }
+        )
+    name_file = link_subcategory['link_sub_category'].split('/')
+    name_file = name_file[1:-1]
+    name_file = '_'.join(name_file)
 
+    pickle_file = 'storage/{}.pickle'.format(name_file)
+    with open(pickle_file, 'wb') as file:
+        pickle.dump(list_full_info, file, pickle.HIGHEST_PROTOCOL)
+    return list_full_info
+
+
+def get_full_info_provod(list_link_subject, link_subcategory):
+    list_full_info = []
+    for subject in list_link_subject:
+        tail_subject = subject['link_subject']
+        subject_content = fetch_url(tail_subject)
+        soup_subject = bs(subject_content, 'html.parser')
+        link_chain = get_link_chain(soup_subject)
+        info_subject = get_info_subject(soup_subject)
+        subtag_category = link_chain['category']
+        split_subtag = info_subject['title_subject'].split(' ')
+        subtag_mark = 'Провода и шнуры'
+        subtag = ', '.join(split_subtag) + ', ' + subtag_category + ', ' + subtag_mark
+        description = subject['description_sub_category']
+
+        list_full_info.append({
+            'offer_tag': 'КАБЕЛЬНО-ПРОВОДНИКОВАЯ ПРОДУКЦИЯ',
+            'offer_subtags': subtag,
+            'offer_valuta': 'руб.',
+            'offer_title': info_subject['title_subject'],
+            # 'offer_price': info_subject['price'],
+            'offer_price': '0.0',
+            'offer_value': 'м',
+            'offer_minorder': '1',
+            'offer_minorder_value': 'м',
+            'offer_pre_text': description,
+            'offer_availability': 'Под заказ',
+            'offer_image_url': info_subject['image_link'],
+            'offer_url': '',
+            'offer_text': description,
+            'offer_publish': '',
         }
         )
     name_file = link_subcategory['link_sub_category'].split('/')
@@ -180,7 +229,7 @@ def get_output_merg():
         list_link_sub_categories = get_link_sub_category(link_category)
         for link_sub_category in list_link_sub_categories:
             list_subject = get_link_subject(link_sub_category)
-            return get_full_info(list_subject, link_sub_category)
+            return get_full_info_kabel(list_subject, link_sub_category)
 
 
 if __name__ == '__main__':
@@ -193,6 +242,6 @@ if __name__ == '__main__':
         list_link_sub_categories = get_link_sub_category(link_category)
         for link_sub_category in list_link_sub_categories:
             list_subject = get_link_subject(link_sub_category)
-            print(get_full_info(list_subject, link_sub_category))
+            print(get_full_info_provod(list_subject, link_sub_category))
             break
 
