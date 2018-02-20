@@ -287,11 +287,11 @@ def get_output_category():
                 list_subjects, pickle_file = get_link_subject(
                     link_subcategory)
                 list_full_info_subjects = []
-                for subject in list_subjects:  # проходит по этому списку
+                for subject in list_subjects:                           # проходит по этому списку
                     full_info_subjects = get_full_info_kabel(
                         subject, link_subcategory)
                     list_full_info_subjects.append(
-                        full_info_subjects)  # записывает результат парсинга в pickle файл
+                        full_info_subjects)                             # записывает результат парсинга в pickle файл
                 with open(pickle_file, 'wb') as file:
                     pickle.dump(list_full_info_subjects, file,
                                 pickle.HIGHEST_PROTOCOL)
@@ -310,11 +310,11 @@ def get_output_subcategory():
     soup_with_links = get_soup_links(content)
     list_link_categories = get_link_category(soup_with_links)
     for link_category in list_link_categories:
-        list_link_subcategories = get_link_subcategory(link_category)
+        list_link_subcategories, pickle_file = get_link_subcategory(link_category)
         for link_subcategory in list_link_subcategories:
+
             if link_subcategory['link_subcategory'] == url_subcategory: # ищет нужный вид кабеля
-                list_subjects, pickle_file = get_link_subject(
-                    link_subcategory)
+                list_subjects = get_link_subject(link_subcategory)
                 list_full_info_subjects = []
                 for subject in list_subjects:                           # проходит по этому списку
                     full_info_subjects = get_full_info_kabel(
