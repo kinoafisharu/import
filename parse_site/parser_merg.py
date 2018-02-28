@@ -165,7 +165,7 @@ def get_full_info_provod(subject, link_subcategory):
     subtag_mark = 'Провода и шнуры'
     subtag = ', '.join(split_subtag) + ', ' + subtag_category + ', ' + subtag_mark
     description = subject['description_subcategory']
-    list_full_info.append({
+    info_subject = {
         'offer_tag': 'КАБЕЛЬНО-ПРОВОДНИКОВАЯ ПРОДУКЦИЯ',
         'offer_subtags': subtag,
         'offer_valuta': 'руб.',
@@ -182,14 +182,13 @@ def get_full_info_provod(subject, link_subcategory):
         'offer_text': description,
         'offer_publish': '',
     }
-    )
+
     name_file = link_subcategory['link_subcategory'].split('/')
     name_file = name_file[1:-1]
     name_file = '_'.join(name_file)
 
     pickle_file = 'storage/{}.pickle'.format(name_file)
-    with open(pickle_file, 'wb') as file:
-        pickle.dump(list_full_info, file, pickle.HIGHEST_PROTOCOL)
+
     return list_full_info
 
 

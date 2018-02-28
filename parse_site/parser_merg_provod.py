@@ -41,15 +41,8 @@ def get_soup_links(content_from_site):
 
     soup_content = bs(content_from_site, 'lxml')
     soup_tag = soup_content.find('table').find_parent('div', id='subparts')
-    # soup_tag = soup_tag.find('table')
     soup_tags = soup_tag.find_all('tr')
     return soup_tags
-
-
-# def get_link(tag):
-#     link = tag.get('href')
-#     dict_link = {'link': link}
-#     return dict_link
 
 
 def get_link_category(soup_with_link):
@@ -83,11 +76,6 @@ def get_link_subcategory(link_category):
         dict_link_subcategory = {'link': link_subcategory,
                                   'description_subcategory': description}
         list_link_subcategories.append(dict_link_subcategory)
-    #
-    # name_file = link_subcategory.split('/')
-    # name_file = name_file[1:-1]
-    # name_file = '_'.join(name_file)
-    # pickle_file = 'storage/{}.pickle'.format(name_file)
 
     return list_link_subcategories
 
@@ -132,7 +120,7 @@ def get_full_info_provod(subject, link_subcategory):
     subtag_mark = 'Провода и шнуры'
     subtag = ', '.join(split_subtag) + ', ' + subtag_category + ', ' + subtag_mark
     description = subject['description_subcategory']
-    list_full_info.append({
+    full_info = {
         'offer_tag': 'КАБЕЛЬНО-ПРОВОДНИКОВАЯ ПРОДУКЦИЯ',
         'offer_subtags': subtag,
         'offer_valuta': 'руб.',
@@ -149,15 +137,8 @@ def get_full_info_provod(subject, link_subcategory):
         'offer_text': description,
         'offer_publish': '',
     }
-    )
-    name_file = link_subcategory['link'].split('/')
-    name_file = name_file[1:-1]
-    name_file = '_'.join(name_file)
 
-    pickle_file = 'storage/{}.pickle'.format(name_file)
-    with open(pickle_file, 'wb') as file:
-        pickle.dump(list_full_info, file, pickle.HIGHEST_PROTOCOL)
-    return list_full_info
+    return full_info
 
 
 def get_link_chain(soup_subject):
@@ -294,7 +275,7 @@ def get_output_subcategory():
     # Пример - /provod/rezinovoj/kg/
 
     tail = PROVOD
-    url_subcategory = '/catalog/provodashnur/*/*/'
+    url_subcategory = '/catalog/provodashnur/provod-montazhniy/pvs/'
     content = fetch_url(tail)
     soup_with_links = get_soup_links(content)
     list_link_categories = get_link_category(soup_with_links)
@@ -324,8 +305,8 @@ def get_output_subject():
     # Необходимо передать в переменную url_subject - something
     # Пример - /catalog/provod/rezinovoj/kg/1-10/
 
-    tail = PROVOD
-    url_subject = '/catalog/provodashnur/provod-montazhniy/pv-pugv/17995/'
+    tail = SIP
+    url_subject = '/catalog/provod-sip/2/16/'
     content = fetch_url(tail)
     soup_with_links = get_soup_links(content)
     list_link_categories = get_link_category(soup_with_links)
@@ -367,4 +348,4 @@ def get_output_subject():
 
 
 if __name__ == '__main__':
-    get_output_subject()
+    get_output_subcategory()
