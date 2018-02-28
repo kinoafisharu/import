@@ -1,3 +1,19 @@
+"""
+Парсинг раздела сайта merg.ru.
+
+Скрипт  парсит и собирает данные о выбранном объекте раздела сайта
+'http://www.merg.ru/catalog/provodashnur/'.
+
+1. Для сбора информации копируется html страница каталога.
+2. Проходится по всем ссылкам вглубь до товара.
+3. Собираются необходимые данные о товаре (Название, цена, группа, метки,
+количество на складе)
+4. Подготавливаются выходные данные для конкретной базы данных.
+5. Записывается pickle файл в папку /storage.
+
+На выходе отдаётся pickle файл.
+"""
+
 import requests
 import random
 import pickle
@@ -13,12 +29,25 @@ TYPE_OBJECT = dict(
 KABEL = '/catalog/kabel/'
 PROVOD = '/catalog/provodashnur/'
 SIP = '/catalog/provod-sip/'
-# DIR_INFO = {'catalog': CATALOG,
-#             'subject': SUBJECT,}
 
 
 def fetch_url(tail):
-    # Запрос к странице n-ого уровня по адресу url с возвращением ответа (страницы)
+    """
+    Прочитать html страницу и сохранить в память результат.
+
+    Сервер на который делается запрос, может ставить блокировку на
+    на множественные запросы. Поэтому вводятся аргументы, которые
+    регулируют параметры запроса.
+    :arg
+        timeout - кортеж (время передачи запроса, время ожидания ответа)
+        agent-list - список user-agents
+        headers - параметр, который передаётся в голове запроса для того,
+        чтобы завуалировать вход и прикинуться клиент-браузером.
+    :param tail:
+        внутренний адрес страницы сайта
+    :return:
+        байтовую строку
+    """
 
     url = MAIN_URL + tail
     timeout = (2, 10)
@@ -36,9 +65,21 @@ def fetch_url(tail):
 
 
 def get_soup_links(content_from_site):
-    # Обработка ответа из fetch_url и получение 'супа' с ссылками на
-    # страницы n уровня
+    """
+    Обработать байтовый текст и сделать первичный поиск html тегов,
+    так называемый 'суп тегов'.
 
+    :param content_from_site:
+        html страницы преобразованные в байтовый текст
+    :return:
+        список одинаковых тегов
+
+        ['<tr><div> Какой-то текст </div></tr>',
+         '<tr><div> Какой-то текст </div></tr>',
+         '<tr><div> Какой-то текст </div></tr>',
+         '...',]
+
+    """
     soup_content = bs(content_from_site, 'lxml')
     soup_tag = soup_content.find('table').find_parent('div', id='subparts')
     soup_tags = soup_tag.find_all('tr')
@@ -46,8 +87,19 @@ def get_soup_links(content_from_site):
 
 
 def get_link_category(soup_with_link):
-    # Получает ссылки со страницы 2 уровня на подгруппы (тип кабеля) и
-    #  возвращает список этих ссылок
+    """
+    Спарсить все ссылки на типы товаров данной страницы.
+
+    :param soup_with_link:
+        На вход подаётся 'cуп тегов'
+    :return:
+        Возвращает список словарей с ссылками на типы проводов с данной
+        страницы
+        [{'link': '/catalog/provodashnur/provod-montazhniy/'},
+         {'link': '/catalog/provodashnur/provod-montazhniy/'},
+         {'link': '/catalog/provodashnur/provod-montazhniy/'},
+        }]
+    """
 
     list_link_categories = []
     for soup_tag in soup_with_link:
@@ -59,8 +111,22 @@ def get_link_category(soup_with_link):
 
 
 def get_link_subcategory(link_category):
-    # Получает ссылки со странцы 3 уровня на подгруппу (марка кабеля) и
-    #  возвращает список этих ссылок
+    """
+    Спарсить все ссылки на подтипы товаров данной страницы.
+
+    :param link_category:
+        Словарь со ссылкой на тип провода
+    :return:
+        Возвращает список словарей с ссылками на подтипы проводов с данной
+        страницы
+        [
+         {'link': '/catalog/provodashnur/provod-montazhniy/pv-puv/',
+          'description_subcategory': 'описание'},
+         {'link': '/catalog/provodashnur/provod-montazhniy/pv-pugv/',
+          'description_subcategory': 'описание'},
+         {'link': '/catalog/provodashnur/provod-montazhniy/pvs/'},
+        }]
+    """
 
     list_link_subcategories = []
     tail = link_category['link']
@@ -81,7 +147,31 @@ def get_link_subcategory(link_category):
 
 
 def get_link_subject(link_subcategory):
-    # Получает ссылки со страницы 4 уровня на кабели (товар) и возвращает список этих ссылок
+    """
+    Спарсить все ссылки на товары данной страницы.
+
+    Помимо парсинга ссылок на данной странице, формирует название файла
+    и адрес, куда будет записан общий результат парсинга. Для этого
+    обрабатывает ссылку на подтип провода (link_subcategory) и делает
+    из неё название.
+
+    :param link_subcategory:
+        Словарь со ссылкой на тип провода
+    :return:
+        Возвращает кортеж (dict, str) состоящий из:
+            - списка словарей с ссылками на подтипы проводов с данной
+            страницы
+            [
+            {'link': '/catalog/provodashnur/provod-montazhniy/pv-puv/2-0-75/',
+             'description_subcategory': 'описание'},
+            {'link': '/catalog/provodashnur/provod-montazhniy/pv-pugv/2-0-75/',
+             'description_subcategory': 'описание'},
+            {'link': '/catalog/provodashnur/provod-montazhniy/pvs/2-0-75/',
+             'description_subcategory': 'описание'},
+            ]
+            - пути с названием для сохранения файла
+            'storage/catalog_provodashnur_provod-montazhniy_pvs.pickle'
+    """
 
     list_link_subject = []
     subject_tail = link_subcategory['link']
@@ -105,11 +195,38 @@ def get_link_subject(link_subcategory):
     return list_link_subject, pickle_file
 
 
-def get_full_info_provod(subject, link_subcategory):
-    # Проходит по ссылкам и получает полную информацию о ПРОВОДЕ (товаре)
-    # Записывает результат в pickle файл для последующей конвертации в json
+def get_full_info_provod(subject):
+    """
+    Подготавливает данные для вывода в файл.
 
-    list_full_info = []
+    Формирует словарь с заданными ключами для вывода в файл.
+    Данные берёт из словоря subject.
+    Остальные данные забиты константой из-за требований, которые
+    предъявляются к выходным данным.
+
+    :param subject:
+        Информация распарсенная информация о товаре
+    :return:
+        Возвращает словарь с необходимыми свойствами товара
+        {
+         'offer_tag': 'КАБЕЛЬНО-ПРОВОДНИКОВАЯ ПРОДУКЦИЯ',
+         'offer_subtags': 'провода и шнуры, 2x1,5, ПВС, провод'
+         'offer_valuta': 'руб.',
+         'offer_title': ПВС 2x1,5,
+         'offer_price': '0.0',
+         'offer_value': 'м',
+         'offer_minorder': '1',
+         'offer_minorder_value': 'м',
+         'offer_pre_text': Короткое описание товара,
+         'offer_availability': 'Под заказ',
+         'offer_image_url': 'http://www.merg.ru/data/icons/parts/1756_mid.png',
+         'offer_url': '',
+         'offer_text': 'Короткое описание товара',
+         /в данной реализации используется короткое описание
+         'offer_publish': '',
+        }
+    """
+
     tail_subject = subject['link']
     subject_content = fetch_url(tail_subject)
     soup_subject = bs(subject_content, 'html.parser')
@@ -125,7 +242,7 @@ def get_full_info_provod(subject, link_subcategory):
         'offer_subtags': subtag,
         'offer_valuta': 'руб.',
         'offer_title': info_subject['title_subject'],
-        # 'offer_price': info_subject['price'],
+        # 'offer_price': info_subject['price'], / в данной реализации не нужна реальная цена
         'offer_price': '0.0',
         'offer_value': 'м',
         'offer_minorder': '1',
@@ -137,13 +254,26 @@ def get_full_info_provod(subject, link_subcategory):
         'offer_text': description,
         'offer_publish': '',
     }
-
     return full_info
 
 
 def get_link_chain(soup_subject):
-    # Распарсивает цепочку (дерево) категорий и подкатегорий на странице
-    # объекта и возвращает словарь
+    """
+    Спарсить цепочку пути (chain_subject) на товар на странице товара.
+    (каталог -> Провода и шнуры -> Провод монтажный -> ПВС ->)
+
+    Необходим для пополнения меток (свойств, описывающих товар).
+    Считает что в цепочки 3 уровня, если последнего уровня нет,
+    то обрабатывает ошибку и возвращает 2 уровня.
+    :param soup_subject:
+        Суп тегов со страницы товара.
+    :return:
+        Возвращает словарь {
+            'group': 'Провода и шнуры',
+            'category': 'Провод монтажный',
+            'subcategory': 'ПВС',
+        }
+    """
 
     chain_subject = soup_subject.find('div', id='chain')
     list_chain_links = chain_subject.find_all('a')
@@ -164,8 +294,19 @@ def get_link_chain(soup_subject):
 
 
 def get_info_subject(soup_subject):
-    # Распарсивает необходимые данные на странице объекта и возвращает
-    # словарь с этими данными
+    """
+    Спарсить полностью страницу товара и вернуть данные.
+
+    Проходится по всей странице товара и собирает необходимые данные о
+    товаре - название, цена, количество на складе, ссылка на картинку.
+    Остальные данные забиты константой из-за требований, которые
+    предъявляются к выходным данным.
+
+    :param soup_subject:
+        Словарь со ссылкой на товар
+    :return:
+        Возвращает словарь с необходимыми свойствами товара
+    """
 
     info_subject = soup_subject.find('div', id='good')
     title_subject = info_subject.find('div', id='g_text')
@@ -191,17 +332,13 @@ def get_info_subject(soup_subject):
         }
 
 
-def get_description(tail):
-    # Распарсивает страницу 3 уровня, и получает короткое описание объекта
-
-    content = fetch_url(tail)
-    soup = bs(content, 'html.parser')
-    description = soup.find('i').get_text()
-    return description
-
-
-def get_output_merg():
-    # Запускает парсинг всех объектов находящихся на 2 уровне и в глубь
+def get_piсkle_goods_site():
+    """
+    Парсится весь подкаталог товара, например: 'Провода и шнуры'
+    Логика работы прописана вверху файла.
+    :return:
+        Сохраняется на диск pickle файл.
+    """
 
     tail = PROVOD                                                       # определяет начало url для парсинга (в данном случае силовой кабель)
     content = fetch_url(tail)                                           # получает контент страницы 2 уровня
@@ -215,64 +352,83 @@ def get_output_merg():
             list_full_info_subjects = []
             for subject in list_subjects:                               # проходит по этому списку
                 full_info_subjects = get_full_info_provod(
-                    subject, link_subcategory)
+                    subject)
                 list_full_info_subjects.append(full_info_subjects)      # записывает результат парсинга в pickle файл
             with open(pickle_file, 'wb') as file:
                 pickle.dump(list_full_info_subjects, file,
                             pickle.HIGHEST_PROTOCOL)
 
-            break
 
-
-def get_output_category():
-    # Запускает парсинг всех объектов находящихся на 3 уровне и в глубь
-    # Необходимо передать в переменную url_category - something
-    # Пример - /catalog/provod/rezinovoj/
+def get_pickle_all_goods_category():
+    """
+    Парсится весь подкаталог товара, например: 'Провод монтажный'
+    Логика работы прописана вверху файла.
+    Вводится переменная url_category для отсеивания
+    необходимой для парсинга категории товара.
+    :args:
+        url_category - ссылка на необходимую категорию товара
+    :return:
+        Сохраняется на диск pickle файл.
+    """
 
     tail = PROVOD
-    url_category = '/catalog/provodashnur/*/'
+    url_category = '/catalog/provodashnur/provod-montazhniy/'
     content = fetch_url(tail)
     soup_with_links = get_soup_links(content)
     list_link_categories = get_link_category(soup_with_links)
     for link_category in list_link_categories:
-        if link_category['link'] == url_category:        # ищет нужную категорию
+        if link_category['link'] == url_category:
+            # ищет нужную категорию
             try:
+                # проверяет страницу как подкатегорию товара
                 list_link_subcategories = get_link_subcategory(
                     link_category)
-                for link_subcategory in list_link_subcategories:  # ищет нужный кабель
+                for link_subcategory in list_link_subcategories:
                     list_subjects, pickle_file = get_link_subject(
                         link_subcategory)
                     list_full_info_subjects = []
-                    for subject in list_subjects:  # проходит по этому списку
+                    for subject in list_subjects:
                         full_info_subjects = get_full_info_provod(
-                            subject, link_subcategory)
+                            subject)
                         list_full_info_subjects.append(
-                            full_info_subjects)  # записывает результат парсинга в pickle файл
+                            full_info_subjects)
                     if list_full_info_subjects:
                         with open(pickle_file, 'wb') as file:
                             pickle.dump(list_full_info_subjects, file,
                                         pickle.HIGHEST_PROTOCOL)
+                            # записывает результат парсинга в pickle
+                            # файл
             except AttributeError:
+                # при ошибке начинается парсинг страницы, как список
+                # товара
                 list_subjects, pickle_file = get_link_subject(
                     link_category)
                 list_full_info_subjects = []
-                for subject in list_subjects:  # проходит по этому списку
+                for subject in list_subjects:
+                    # проходит по этому списку
                     full_info_subjects = get_full_info_provod(
-                        subject, link_category)
-                    list_full_info_subjects.append(full_info_subjects)  # записывает результат парсинга в pickle файл
+                        subject)
+                    list_full_info_subjects.append(full_info_subjects)
                 if list_full_info_subjects:
                     with open(pickle_file, 'wb') as file:
                         pickle.dump(list_full_info_subjects, file,
                                     pickle.HIGHEST_PROTOCOL)
-
+                        # записывает результат парсинга в pickle файл
         else:
             continue
 
 
-def get_output_subcategory():
-    # Запускает парсинг всех объектов находящихся на 4 уровне и в глубь
-    # Необходимо передать в переменную url_subcategory - something
-    # Пример - /provod/rezinovoj/kg/
+def get_pickle_all_goods_subcategory():
+    """
+    Парсится весь под подкаталог товара, например: 'ПВС'
+    Логика работы прописана вверху файла.
+    Вводится переменная url_subcategory для отсеивания
+    необходимой для парсинга подкатегории товара.
+    :args:
+        url_subcategory - ссылка на необходимую подкатегорию товара
+    :return:
+        Сохраняется на диск pickle файл.
+    """
 
     tail = PROVOD
     url_subcategory = '/catalog/provodashnur/provod-montazhniy/pvs/'
@@ -283,15 +439,15 @@ def get_output_subcategory():
         try:
             list_link_subcategories = get_link_subcategory(link_category)
             for link_subcategory in list_link_subcategories:
-                if link_subcategory['link'] == url_subcategory: # ищет нужный вид кабеля
+                if link_subcategory['link'] == url_subcategory:
                     list_subjects, pickle_file = get_link_subject(
                         link_subcategory)
                     list_full_info_subjects = []
-                    for subject in list_subjects:                           # проходит по этому списку
+                    for subject in list_subjects:
                         full_info_subjects = get_full_info_provod(
-                           subject, link_subcategory)
+                           subject)
                         list_full_info_subjects.append(
-                           full_info_subjects)                             # записывает результат парсинга в pickle файл
+                           full_info_subjects)
                     with open(pickle_file, 'wb') as file:
                         pickle.dump(list_full_info_subjects, file,
                                     pickle.HIGHEST_PROTOCOL)
@@ -300,10 +456,18 @@ def get_output_subcategory():
         except AttributeError:
             continue
 
-def get_output_subject():
-    # Запускает парсинг всех объектов находящихся на 5 уровне
-    # Необходимо передать в переменную url_subject - something
-    # Пример - /catalog/provod/rezinovoj/kg/1-10/
+
+def get_pickle_good():
+    """
+    Парсится товар, например: 'ПВС 2 х 0,75'
+    Логика работы прописана вверху файла.
+    Вводится переменная url_subcategory для отсеивания
+    необходимой для парсинга подкатегории товара.
+    :args:
+        url_subject - ссылка на необходимый товар
+    :return:
+        Сохраняется на диск pickle файл.
+    """
 
     tail = SIP
     url_subject = '/catalog/provod-sip/2/16/'
@@ -313,15 +477,15 @@ def get_output_subject():
     for link_category in list_link_categories:
         try:
             list_link_subcategories = get_link_subcategory(link_category)
-            for link_subcategory in list_link_subcategories:                # ищет нужный кабель
+            for link_subcategory in list_link_subcategories:
                 list_subjects, pickle_file = get_link_subject(
                     link_subcategory)
                 list_full_info_subjects = []
-                for subject in list_subjects:  # проходит по этому списку
+                for subject in list_subjects:
                     full_info_subjects = get_full_info_provod(
-                        subject, link_subcategory)
+                        subject)
                     if subject['link'] == url_subject:
-                        list_full_info_subjects.append(full_info_subjects)  # записывает результат парсинга в pickle файл
+                        list_full_info_subjects.append(full_info_subjects)
                     else:
                         continue
                 if list_full_info_subjects:
@@ -329,16 +493,16 @@ def get_output_subject():
                         pickle.dump(list_full_info_subjects, file,
                                     pickle.HIGHEST_PROTOCOL)
 
-        except AttributeError:                                             # ищет нужный кабель
+        except AttributeError:
             list_subjects, pickle_file = get_link_subject(
                 link_category)
             list_full_info_subjects = []
-            for subject in list_subjects:  # проходит по этому списку
+            for subject in list_subjects:
                 full_info_subjects = get_full_info_provod(
-                    subject, link_category)
+                    subject)
                 if subject['link'] == url_subject:
                     list_full_info_subjects.append(
-                        full_info_subjects)  # записывает результат парсинга в pickle файл
+                        full_info_subjects)
                 else:
                     continue
             if list_full_info_subjects:
@@ -348,4 +512,4 @@ def get_output_subject():
 
 
 if __name__ == '__main__':
-    get_output_subcategory()
+    get_pickle_good()
