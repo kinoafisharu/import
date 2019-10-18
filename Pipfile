@@ -20,7 +20,7 @@ itsdangerous = "==0.24"
 "jinja2" = "==2.10"
 markupsafe = "==1.0"
 "urllib3" = "==1.22"
-werkzeug = "==0.12.2"
+werkzeug = "==0.15.3"
 pyopenssl = "*"
 
 
